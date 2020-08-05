@@ -1,2 +1,2 @@
 language = "cpp"
-run = ""
+run = "g++ robot.cpp -std=c++11 && ./a.out ambiente.txt"
