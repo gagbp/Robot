@@ -17,6 +17,7 @@
 #include <fstream>
 #include <omp.h>
 #include <math.h>
+#include<bits/stdc++.h>
 using namespace std;
 
 /*
@@ -121,14 +122,16 @@ Aresta make_Aresta(int v, int x, int y){
 }
 
 struct No{
+  int A;
   Aresta* Arestas; //Vetor de arestas <distancia, No destino>
 };
 
 No make_No(int N){
   No n;
-  n.Arestas = (Aresta*)malloc(N * sizeof(Aresta));
+  n.A = N;
+  n.Arestas = (Aresta *) malloc (N * sizeof(Aresta));
   return n;
-} // lembrar de liberar
+}
 
 struct Grafo{
   int N; // NxN = Quantidade de Nós
@@ -137,18 +140,16 @@ struct Grafo{
 
 Grafo make_Grafo(int N){
   Grafo g;
-  g.N = N*N;
-  printf("Valor de N : %d\n",g.N);
+  g.N = N;
   g.Nos = (No **)malloc(N * sizeof(No *));
   for(int i = 0; i < N; i++){
     g.Nos[i] = (No *)malloc(N * sizeof(No));
   }
-  printf("asdasd\n");
   return g;
 }
 
 void destroy_Grafo(Grafo g){
-  for(int i = 0 ; i < sqrt(g.N) ; i++){
+  for(int i = 0 ; i < g.N; i++){
     free(g.Nos[i]->Arestas);
     free(g.Nos[i]);
   }
@@ -156,12 +157,8 @@ void destroy_Grafo(Grafo g){
 }
 
 Grafo Matriz_to_Grafo(Matriz M){
-  printf("Entrou Matriz_to_Grafo");
-  sleep(2);
   Grafo g = make_Grafo(M.N);
   
-  printf("Grafo alocado");
-
   for(int i=0; i < g.N; i++){
     for(int j=0; j < g.N; j++){
       No n;
@@ -242,11 +239,10 @@ void Print_Grafo(Grafo G){
   printf("Grafo com %d nós\n", G.N*G.N);
   for(int i=0; i < G.N; i++){
     for(int j=0; j < G.N; j++){
-      printf("\tNó <%2d,%2d>: %ld\n",i,j,sizeof(G.Nos[i][j]));
-      
-      //for(int a=0; a<G.Nos[i][j]. ; ){
-
-      //}
+      printf("\tNó <%2d,%2d>:\n",i,j);
+      for(int a=0; a < G.Nos[i][j].A ; a++){
+        printf("\t\t%2d: %2d <%2d,%2d>\n", a, G.Nos[i][j].Arestas[a].valor, G.Nos[i][j].Arestas[a].destino.first, G.Nos[i][j].Arestas[a].destino.second);
+      }
     }
   }
 }
@@ -273,21 +269,20 @@ int main(int argc, char **argv){
   */
   std::string arquivo = argv[1];
   std::pair <int,int> O, D;
-  /*
-  O.first = atoi(argv[2]);
-  O.second = atoi(argv[3]);
-  D.first = atoi(argv[4]);
-  D.second = atoi(argv[5]);
-  */
+  O = make_pair(atoi(argv[2]), atoi(argv[3]));
+  D = make_pair(atoi(argv[4]), atoi(argv[5]));
+  std::list <std::pair <int,int> > c;
 
   Matriz Ambiente = Criar_ambiente(arquivo);
   //Print_Matriz(Ambiente);
   
   Grafo G = Matriz_to_Grafo(Ambiente);
-  Print_Grafo(G);
+  //Print_Grafo(G);
 
-  
+  Robo Bender = make_Robo(O.first, O.second, c);
+
   destroy_Grafo(G);
   destroy_Matriz(Ambiente);
+
   return 0;
 }
