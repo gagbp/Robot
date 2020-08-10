@@ -1,4 +1,5 @@
 /*
+g++ robot.cpp -std=c++11 -I/usr/local/include/python2.7 -I/usr/local/lib/python2.7/site-packages/numpy/core/include -lpython2.7
   Compilar: g++ ants.cpp -fopenmp -std=c++11
   Executar: ./a.out N Ox Oy Dx Dy 
             N  = arquivo com a Matriz
@@ -18,8 +19,12 @@
 #include <omp.h>
 #include <math.h>
 #include<bits/stdc++.h>
+#include "matplotlibcpp.h"
+namespace plt = matplotlibcpp;
+
 using namespace std;
 
+int id_cont = 1;
 /*
   Variáveis do sistema
     Tamanho da matriz
@@ -45,7 +50,25 @@ using namespace std;
     Estatico ,  a nao ser que o rio do campo transborde ou o fogo aumente
     Discreto , me da a entender sobre o conjunto enumeravel
 
+
+  dijkkstra psdo code
+  1:	function Dijkstra(Graph, source):
+  2:	for each vertex v in Graph:	// Initialization
+  3:	dist[v] := infinity	// initial distance from source to vertex v is set to infinite
+  4:	previous[v] := undefined	// Previous node in optimal path from source
+  5:	dist[source] := 0	// Distance from source to source
+  6:	Q := the set of all nodes in Graph	// all nodes in the graph are unoptimized - thus are in Q
+  7:	while Q is not empty:	// main loop
+  8:	u := node in Q with smallest dist[ ]
+  9:	remove u from Q
+  10:	for each neighbor v of u:	// where v has not yet been removed from Q.
+  11:	alt := dist[u] + dist_between(u, v)
+  12:	if alt < dist[v]	// Relax (u,v)
+  13:	dist[v] := alt
+  14:	previous[v] := u
+  15:	return previous[ ]
 */
+
 
 struct Matriz{
   int N;  //Ordem da matriz
@@ -112,6 +135,21 @@ void Print_Matriz(Matriz m){
 struct Aresta{
   int valor;
   std::pair<int,int> destino;
+   inline bool operator==(Aresta a){
+    if(valor == a.valor && destino == a.destino){
+      return true;
+    }else{
+      return false;
+    }
+   }
+   inline bool operator!=(Aresta a){
+    if(valor == a.valor && destino == a.destino){
+      return false;
+    }else{
+      return true;
+    }
+   }
+
 };
 
 Aresta make_Aresta(int v, int x, int y){
@@ -122,16 +160,32 @@ Aresta make_Aresta(int v, int x, int y){
 }
 
 struct No{
-  int A,dist;
-  No *no_anterior;
+  int A; //numeor de arestas
+  int id;
   Aresta* Arestas; //Vetor de arestas <distancia, No destino>
+  inline bool operator==(const No& a){
+    if(id == a.id){
+      return true;
+    }else{
+      return false;
+    }
+  }
+    inline bool operator!=(const No& a){
+    if(id == a.id){
+      return false;
+    }else{
+      return true;
+    }
+  }
 };
 
 No make_No(int N){
   No n;
-  n.A = N;
-  n.dist = INT_MAX;
-  n.no_anterior = NULL;
+  
+  n.id = id_cont;
+  id_cont++;
+  
+  n.A = N; // numero de arestas
   n.Arestas = (Aresta *) malloc (N * sizeof(Aresta));
   return n;
 }
@@ -261,36 +315,77 @@ Robo make_Robo(int x, int y, std::list <std::pair <int,int> > caminho){ // Cria 
   r.Caminho = caminho;
   return r;
 }
-/*
-void Dijkstra(Grafo g, int x,int y){
+
+/// lista.remove n funcionando , fazer com  erase usando o id
+
+int Dijkstra(Grafo g, int x, int y,int d_x,int d_y){
+  int distancia[g.N][g.N]; // alocado estatico para teste
+  No anterior[g.N][g.N];
+  std::list<No> lista_No;
+  
   for (int i = 0 ; i < g.N; i++){
     for (int j = 0 ; j < g.N; j++){
-      g.Nos[i][j].distancia[l][k] = MAX valor;
-      se i = l e j == k  g.nos[i][j].distnacia[l][k] = 0
-      g.Nos.anteriores = NULL;
+      lista_No.push_back(g.Nos[i][j]);
+      if(x == i && y == j){
+        distancia[i][j] = 0;
+      }else{
+        distancia[i][j] = INT_MAX;
+       
+      }
     }
-  
-  
   }
+
+  while(lista_No.size() != 0){
+    //printf("tamanho da lista %ld\n",lista_No.size());
+    //procura a menor distancia 
+    int menor = INT_MAX;
+    int x_aux,y_aux;
+    for (int i = 0 ; i< g.N ; i++){
+      for (int j = 0 ; j<g.N ; j++){
+        if(menor > distancia[i][j] && std::find(lista_No.begin(),lista_No.end(),g.Nos[i][j]) != lista_No.end()){
+         
+          menor = distancia[i][j];
+          x_aux = i;
+          y_aux = j;
+          
+        }
+      }
+    }
+    //printf("menor %d\n i = %d j = %d\n",menor,x_aux,y_aux);
+    //printf("tamanho da lista %ld\n",lista_No.size());
+    lista_No.remove(g.Nos[x_aux][y_aux]); // remove o menor da lista
+    printf("tamanho da lista %ld\n",lista_No.size());
+    
+    /*
+    for(list<No>::iterator it = lista_No.begin();it != lista_No.end();it++){
+      std::cout << it->id << "\n";
+      if(it->id == g.Nos[x_aux][y_aux].id ){
+        printf("oi do %d \n",g.Nos[x_aux][y_aux].id);
+        printf("tamanho da lista %ld\n",lista_No.size());
+        it =lista_No.erase(it);
+        printf("tamanho da lista %ld\n",lista_No.size());
+      }
+    }
+    */
+
+    for(int i = 0; i < g.Nos[x_aux][y_aux].A;i++){
+       std::pair<int,int> dest = g.Nos[x_aux][y_aux].Arestas[i].destino ;
+      if( std::find(lista_No.begin(),lista_No.end(),g.Nos[dest.first][dest.second]) != lista_No.end() )
+      //procura o no destino da lista se encontrou entrou
+      {  
+        int alt = distancia[x_aux][y_aux] + g.Nos[x_aux][y_aux].Arestas[i].valor;
+        if (alt < distancia[dest.first][dest.second]){
+          distancia[dest.first][dest.second] = alt;
+          anterior[x_aux][y_aux] = g.Nos[dest.first][dest.second];
+        }
+      }
+
+    } 
+  }
+  return distancia[d_x][d_y];
 }
-*/
-/*
-1:	function Dijkstra(Graph, source):
-2:	for each vertex v in Graph:	// Initialization
-3:	dist[v] := infinity	// initial distance from source to vertex v is set to infinite
-4:	previous[v] := undefined	// Previous node in optimal path from source
-5:	dist[source] := 0	// Distance from source to source
-6:	Q := the set of all nodes in Graph	// all nodes in the graph are unoptimized - thus are in Q
-7:	while Q is not empty:	// main loop
-8:	u := node in Q with smallest dist[ ]
-9:	remove u from Q
-10:	for each neighbor v of u:	// where v has not yet been removed from Q.
-11:	alt := dist[u] + dist_between(u, v)
-12:	if alt < dist[v]	// Relax (u,v)
-13:	dist[v] := alt
-14:	previous[v] := u
-15:	return previous[ ]
-*/
+
+
 
 int main(int argc, char **argv){
   /*  
@@ -309,10 +404,21 @@ int main(int argc, char **argv){
   Matriz Ambiente = Criar_ambiente(arquivo);
   //Print_Matriz(Ambiente);
   
+  if(O.first < 0 || O.first >= Ambiente.N || O.second < 0 || O.second >= Ambiente.N){
+    printf("\nCoordenadas de entrada inválidas!\n");
+    return 0;
+  }
+
+  if(D.first < 0 || D.first >= Ambiente.N || D.second < 0 || D.second >= Ambiente.N){
+    printf("\nCoordenadas de destino inválidas!\n");
+    return 0;
+  }
+
   Grafo G = Matriz_to_Grafo(Ambiente);
   //Print_Grafo(G);
-
   Robo Bender = make_Robo(O.first, O.second, c);
+  //teste disjktra
+  printf("\n\n distancia  = %d" , Dijkstra(G,O.first,O.second,D.first,D.second));
 
   destroy_Grafo(G);
   destroy_Matriz(Ambiente);
