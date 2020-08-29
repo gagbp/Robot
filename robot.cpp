@@ -1,12 +1,12 @@
 /*
-g++ robot.cpp -std=c++11 -I/usr/local/include/python2.7 -I/usr/local/lib/python2.7/site-packages/numpy/core/include -lpython2.7
-  Compilar: g++ ants.cpp -fopenmp -std=c++11
-  Executar: ./a.out N Ox Oy Dx Dy 
+  Compilar: g++ robot.cpp -std=c++11
+  Executar: ./a.out N Ox Oy Dx Dy M
             N  = arquivo com a Matriz
             Ox = x de Origem
             Oy = y de Origem
             Dx = x de Destino
             Dy = y de Destino
+            M  = método(1- BFS, 2-Dijkstra, 3-A*)
 */
 #include <stdio.h>      /* printf, scanf, puts, NULL */
 #include <stdlib.h>     /* srand, rand */
@@ -16,13 +16,21 @@ g++ robot.cpp -std=c++11 -I/usr/local/include/python2.7 -I/usr/local/lib/python2
 #include <vector>
 #include <iostream>
 #include <fstream>
-#include <omp.h>
 #include <math.h>
 #include<bits/stdc++.h>
-#include "matplotlibcpp.h"
-namespace plt = matplotlibcpp;
+
+#define RED   "\x1B[31m"
+#define GRN   "\x1B[32m"
+#define YEL   "\x1B[33m"
+#define BLU   "\x1B[34m"
+#define MAG   "\x1B[35m"
+#define CYN   "\x1B[36m"
+#define WHT   "\x1B[37m"
+#define RESET "\x1B[0m"
 
 using namespace std;
+
+
 
 int id_cont = 1;
 /*
@@ -31,15 +39,15 @@ int id_cont = 1;
     Coordenadas de origem
     Coordenadas de destino
   Step-by-Step
-    Criar ambiente 
-    Dispor origem  
-    Dispor destino 
+    Criar ambiente
+    Dispor origem
+    Dispor destino
 
   Regras
     Regra de movimentação
         4 direções
-  
-  Ambiente de tarefa 
+
+  Ambiente de tarefa
     Agente -> Robo
     Medida de desempenho -> Quantidade de nos ateh o destino,custo
     Ambiente -> Campo com diferentes terrenos
@@ -68,7 +76,6 @@ int id_cont = 1;
   14:	previous[v] := u
   15:	return previous[ ]
 */
-
 
 struct Matriz{
   int N;  //Ordem da matriz
@@ -110,26 +117,91 @@ Matriz Criar_ambiente(std::string entrada){
 }
 
 void Print_Matriz(Matriz m){
-		printf("    |");
-    for (int a = 0; a < m.N; a++)
-      printf("%3d |",a);
+		printf("\033[s");
+    printf("   |");
+    for (int a = 0; a < m.N ; a++)
+      printf("%3d|",a);
     printf("\n");
     for (int a = 0; a <= m.N; a++)
-      printf("-----");
+      printf("----");
     printf("\n");
     for (int i = 0; i < m.N; i++)
     {
-      printf("%3d |",i);
+      printf("%3d|",i);
       for (int j = 0; j < m.N; j++)
       {
-        if(m.Tab[i][j] != 0)
-          printf(" %3d |", m.Tab[i][j]);
-        else
-          printf("    |");
+        if(m.Tab[i][j] != 0){
+          if(m.Tab[i][j] == 99 || m.Tab[i][j] == 9 || m.Tab[i][j] == 49 || m.Tab[i][j] == 149 ){
+            printf(MAG " 0 |" RESET);
+          }else if(m.Tab[i][j] == 98 || m.Tab[i][j] == 8 || m.Tab[i][j] == 48 || m.Tab[i][j] == 148){
+            printf(YEL " 0 |" RESET);
+          }else if(m.Tab[i][j] == 1){
+            printf(GRN " 0 |" RESET);
+          }else if(m.Tab[i][j] == 5){
+            printf(WHT " 0 |" RESET);
+          }else if(m.Tab[i][j] == 10){
+            printf(CYN " 0 |" RESET);
+          }else if(m.Tab[i][j] == 15){
+            printf(RED " 0 |" RESET);
+          }else{
+            printf(" 0 |");
+          }
+        }else{
+          //printf("|");
+        }
       }
       printf("\n");
     }
     printf("\n");
+  printf("\033[u");
+}
+
+void ImprimirMatrizVisual(Matriz M,std::string saida){
+  ofstream img (saida);
+  img << "P3" << endl;
+  img << M.N*10 << " " << M.N*10 << endl;
+  img << "255" << endl;
+
+  int r,g,b;
+
+  for (int i = 0; i < M.N*10;  i += 1) {
+    for (int j = 0; j < M.N*10; j += 1) {
+      if(M.Tab[i/10][j/10] == 1){
+        r = 0;
+        g = 255;
+        b = 0;
+      }else if(M.Tab[i/10][j/10] == 5){
+        r = 102;
+        g = 51;
+        b = 0;
+      }else if(M.Tab[i/10][j/10] == 10){
+        r = 0;
+        g = 204;
+        b = 255;
+      }else if(M.Tab[i/10][j/10] == 15){
+        r = 255;
+        g = 102;
+        b = 0;
+      }else if(M.Tab[i/10][j/10] == 0){
+        r = 0;
+        g = 0;
+        b = 0;
+      }else if(M.Tab[i/10][j/10] == 99 || M.Tab[i/10][j/10] == 9 || M.Tab[i/10][j/10] == 49 || M.Tab[i/10][j/10] == 149){
+        r = 255;
+        g = 255;
+        b = 255;
+      }else if(M.Tab[i/10][j/10] == 98 || M.Tab[i/10][j/10] == 8 || M.Tab[i/10][j/10] == 48 || M.Tab[i/10][j/10] == 148){
+        r = 255;
+        g = 255;
+        b = 0;
+      }else{
+        r = 122;
+        g = 122;
+        b = 122;
+      }
+      img << r << " " << g << " " << b << endl;
+    }
+  }
 }
 
 struct Aresta{
@@ -163,6 +235,16 @@ struct No{
   int A; //numeor de arestas
   int id;
   Aresta* Arestas; //Vetor de arestas <distancia, No destino>
+
+
+  int id_anterior;
+
+  int i,j,valor_bfs;
+
+  float f = INT_MAX;
+  float g = INT_MAX;
+  float h = INT_MAX;
+
   inline bool operator==(const No& a){
     if(id == a.id){
       return true;
@@ -179,12 +261,13 @@ struct No{
   }
 };
 
-No make_No(int N){
+No make_No(int N,int x,int y){
   No n;
-  
+  n.i = x;
+  n.j = y;
   n.id = id_cont;
   id_cont++;
-  
+
   n.A = N; // numero de arestas
   n.Arestas = (Aresta *) malloc (N * sizeof(Aresta));
   return n;
@@ -215,25 +298,25 @@ void destroy_Grafo(Grafo g){
 
 Grafo Matriz_to_Grafo(Matriz M){
   Grafo g = make_Grafo(M.N);
-  
+
   for(int i=0; i < g.N; i++){
     for(int j=0; j < g.N; j++){
       No n;
       if(i==0){
         if(j==0){
             //<0,0>
-            n = make_No(2); // 2 por terem duas arestas 
+            n = make_No(2,i,j); // 2 por terem duas arestas
             n.Arestas[0] = make_Aresta(M.Tab[0][1], 0, 1);
             n.Arestas[1] = make_Aresta(M.Tab[1][0], 1, 0);
         }else{
           if(j==g.N-1){
             //<0,N-1>
-            n = make_No(2);// 2 por ter 2 arestas 
+            n = make_No(2,i,j);// 2 por ter 2 arestas
             n.Arestas[0] = make_Aresta(M.Tab[0][j-1], 0, j-1);
             n.Arestas[1] = make_Aresta(M.Tab[1][j], 1, j);
           }else{
             //<0,j> topo
-            n = make_No(3); // max 3 arestas 
+            n = make_No(3,i,j); // max 3 arestas
             n.Arestas[0] = make_Aresta(M.Tab[0][j-1], 0, j-1);
             n.Arestas[1] = make_Aresta(M.Tab[0][j+1], 0, j+1);
             n.Arestas[2] = make_Aresta(M.Tab[1][j], 1, j);
@@ -243,18 +326,18 @@ Grafo Matriz_to_Grafo(Matriz M){
         if(i==g.N-1){
           if(j==0){
             //<N-1,0>
-            n = make_No(2);// 2 por ter 2 arestas 
+            n = make_No(2,i,j);// 2 por ter 2 arestas
             n.Arestas[0] = make_Aresta(M.Tab[i-1][0], i-1, 0);
             n.Arestas[1] = make_Aresta(M.Tab[i][1], i, 1);
           }else{
             if(j==g.N-1){
             //<N-1,N-1>
-            n = make_No(2);// 2 por ter 2 arestas 
+            n = make_No(2,i,j);// 2 por ter 2 arestas
             n.Arestas[0] = make_Aresta(M.Tab[i-1][j], i-1, j);
             n.Arestas[1] = make_Aresta(M.Tab[i][j-1], i, j-1);
             }else{
               //<N-1,j>
-              n = make_No(3); // max 3 arestas 
+              n = make_No(3,i,j); // max 3 arestas
               n.Arestas[0] = make_Aresta(M.Tab[i][j-1], i, j-1);
               n.Arestas[1] = make_Aresta(M.Tab[i][j+1], i, j+1);
               n.Arestas[2] = make_Aresta(M.Tab[i-1][j], i-1, j);
@@ -263,20 +346,20 @@ Grafo Matriz_to_Grafo(Matriz M){
         }else{
           if(j==0){
             //<i,0> esquerda
-            n = make_No(3); // max 3 arestas 
+            n = make_No(3,i,j); // max 3 arestas
             n.Arestas[0] = make_Aresta(M.Tab[i-1][0], i-1, 0);
             n.Arestas[1] = make_Aresta(M.Tab[i+1][0], i+1, 0);
             n.Arestas[2] = make_Aresta(M.Tab[i][1], i, 1);
           }else{
             if(j==g.N-1){
               //<i,N-1> direita
-              n = make_No(3); // max 3 arestas 
+              n = make_No(3,i,j); // max 3 arestas
               n.Arestas[0] = make_Aresta(M.Tab[i-1][j], i-1, j);
               n.Arestas[1] = make_Aresta(M.Tab[i][j-1], i, j-1);
               n.Arestas[2] = make_Aresta(M.Tab[i+1][j], i+1, j);
             }else{
               //<i,j>
-              n = make_No(4); // 4 arestas
+              n = make_No(4,i,j); // 4 arestas
               n.Arestas[0] = make_Aresta(M.Tab[i][j-1], i, j-1);
               n.Arestas[1] = make_Aresta(M.Tab[i][j+1], i, j+1);
               n.Arestas[2] = make_Aresta(M.Tab[i-1][j], i-1, j);
@@ -316,13 +399,89 @@ Robo make_Robo(int x, int y, std::list <std::pair <int,int> > caminho){ // Cria 
   return r;
 }
 
+struct Saida{
+  int NosExp;
+  int NosCam;
+  int Custo;
+};
+
+Saida make_Saida(int a, int b, int c){
+  Saida s;
+  s.NosExp = a;
+  s.NosCam = b;
+  s.Custo = c;
+  return s;
+}
+
+Saida bfs(Grafo g,int x , int y, int d_x , int d_y,Matriz M, Matriz A){
+  Saida retorno = make_Saida(0,0,0); // retorno(numero de nos expandidos,numero de nos no caminho, custo)
+  std::list<No> lista_No;
+  std::list<No> lista_No_Marcado;
+
+  //M.Tab[x][y] = M.Tab[x][y]*10 -1;
+  g.Nos[x][y].valor_bfs = 0;
+  g.Nos[x][y].id_anterior = g.Nos[x][y].id;
+  lista_No_Marcado.push_back(g.Nos[x][y]);
+  lista_No.push_back(g.Nos[x][y]);
+
+  //std::cout << "vertice inicial : " << x << " " << y <<"\n";
+  while(std::find(lista_No.begin(),lista_No.end(),g.Nos[d_x][d_y]) == lista_No.end()){
+    std::list<No>::iterator it = lista_No.begin();
+    for(int i = 0 ; i < it->A;i++){
+      std::pair<int,int> dest_aux = it->Arestas[i].destino;
+
+      if( std::find(lista_No_Marcado.begin(),lista_No_Marcado.end(),g.Nos[dest_aux.first][dest_aux.second]) != lista_No_Marcado.end() ) {//procura no na lista se encontrou entrou
+      //se esta marcado
+
+      }else{
+        //se nao esta marcado
+        g.Nos[dest_aux.first][dest_aux.second].id_anterior = it->id;
+        g.Nos[dest_aux.first][dest_aux.second].valor_bfs = it->Arestas[i].valor;
+        lista_No_Marcado.push_back(g.Nos[dest_aux.first][dest_aux.second]);
+        lista_No.push_back(g.Nos[dest_aux.first][dest_aux.second]);
+        //std::cout << "vertice visitado : " << dest_aux.first << " " << dest_aux.second <<"\n";
+
+        M.Tab[dest_aux.first][dest_aux.second] = M.Tab[dest_aux.first][dest_aux.second]*10 -1;
+
+        Print_Matriz(M);
+        retorno.NosExp++;
+        //sleep(1);
+      }
+
+    }
+    lista_No.pop_front();
+  }
+
+  //backtrak
+  M.Tab[d_x][d_y]--;
+  No caminho = g.Nos[d_x][d_y];
+  retorno.Custo += g.Nos[d_x][d_y].valor_bfs;
+  while(caminho.id != caminho.id_anterior){
+    for(int i = 0; i<g.N; i++){
+      for(int j = 0 ; j<g.N ; j++){
+        if(caminho.id_anterior == g.Nos[i][j].id){
+          //std:: cout << "caminho " << i << " " << j << "\n";
+          retorno.Custo += g.Nos[i][j].valor_bfs;
+          retorno.NosCam++;
+          caminho = g.Nos[i][j];
+          M.Tab[i][j] --;
+          A.Tab[i][j] = M.Tab[i][j];
+        }
+      }
+    }
+  }
+  Print_Matriz(M);
+  return retorno;
+}
 /// lista.remove n funcionando , fazer com  erase usando o id
 
-int Dijkstra(Grafo g, int x, int y,int d_x,int d_y){
+Saida Dijkstra(Grafo g, int x, int y,int d_x,int d_y, Matriz M, Matriz A){
+  Saida retorno = make_Saida(0,0,0); // retorno first é numero de nos , segundo eh custo
   int distancia[g.N][g.N]; // alocado estatico para teste
   No anterior[g.N][g.N];
+  g.Nos[x][y].id_anterior = g.Nos[x][y].id;
   std::list<No> lista_No;
-  
+
   for (int i = 0 ; i < g.N; i++){
     for (int j = 0 ; j < g.N; j++){
       lista_No.push_back(g.Nos[i][j]);
@@ -330,32 +489,39 @@ int Dijkstra(Grafo g, int x, int y,int d_x,int d_y){
         distancia[i][j] = 0;
       }else{
         distancia[i][j] = INT_MAX;
-       
       }
     }
   }
 
-  while(lista_No.size() != 0){
+  //um dos while eh toda a matriz
+  while(std::find(lista_No.begin(),lista_No.end(),g.Nos[d_x][d_y]) != lista_No.end()){
+  //while(lista_No.size() != 0){
     //printf("tamanho da lista %ld\n",lista_No.size());
-    //procura a menor distancia 
+    //procura a menor distancia
     int menor = INT_MAX;
     int x_aux,y_aux;
     for (int i = 0 ; i< g.N ; i++){
       for (int j = 0 ; j<g.N ; j++){
         if(menor > distancia[i][j] && std::find(lista_No.begin(),lista_No.end(),g.Nos[i][j]) != lista_No.end()){
-         
           menor = distancia[i][j];
+
+          if(M.Tab[i][j] == 99 || M.Tab[i][j] == 9 ||
+            M.Tab[i][j] == 49 || M.Tab[i][j] == 149 ){
+          }else{
+            M.Tab[i][j] = M.Tab[i][j]*10 -1;
+            retorno.NosExp++;
+          }
+          Print_Matriz(M);
           x_aux = i;
           y_aux = j;
-          
         }
       }
     }
     //printf("menor %d\n i = %d j = %d\n",menor,x_aux,y_aux);
     //printf("tamanho da lista %ld\n",lista_No.size());
     lista_No.remove(g.Nos[x_aux][y_aux]); // remove o menor da lista
-    printf("tamanho da lista %ld\n",lista_No.size());
-    
+    //printf("tamanho da lista %ld\n",lista_No.size());
+
     /*
     for(list<No>::iterator it = lista_No.begin();it != lista_No.end();it++){
       std::cout << it->id << "\n";
@@ -369,41 +535,285 @@ int Dijkstra(Grafo g, int x, int y,int d_x,int d_y){
     */
 
     for(int i = 0; i < g.Nos[x_aux][y_aux].A;i++){
-       std::pair<int,int> dest = g.Nos[x_aux][y_aux].Arestas[i].destino ;
-      if( std::find(lista_No.begin(),lista_No.end(),g.Nos[dest.first][dest.second]) != lista_No.end() )
-      //procura o no destino da lista se encontrou entrou
-      {  
+      std::pair<int,int> dest = g.Nos[x_aux][y_aux].Arestas[i].destino ;
+      if( std::find(lista_No.begin(),lista_No.end(),g.Nos[dest.first][dest.second]) != lista_No.end() ){
+        //procura o no destino da lista se encontrou entrou
         int alt = distancia[x_aux][y_aux] + g.Nos[x_aux][y_aux].Arestas[i].valor;
         if (alt < distancia[dest.first][dest.second]){
           distancia[dest.first][dest.second] = alt;
           anterior[x_aux][y_aux] = g.Nos[dest.first][dest.second];
+          g.Nos[dest.first][dest.second].id_anterior = g.Nos[x_aux][y_aux].id;
         }
       }
-
-    } 
+    }
   }
-  return distancia[d_x][d_y];
+
+    //backtrak
+
+  M.Tab[d_x][d_y] --;
+  No caminho = g.Nos[d_x][d_y];
+  while(caminho.id != caminho.id_anterior){
+    for(int i = 0; i<g.N; i++){
+      for(int j = 0 ; j<g.N ; j++){
+        if(caminho.id_anterior == g.Nos[i][j].id){
+          //std:: cout << "caminho " << i << " " << j << "\n";
+          caminho = g.Nos[i][j];
+          retorno.NosCam++;
+          M.Tab[i][j]--;
+          A.Tab[i][j] = M.Tab[i][j];
+        }
+      }
+    }
+  }
+
+  Print_Matriz(M);
+  retorno.Custo = distancia[d_x][d_y];
+  return retorno;
+  //printf("Distancia dijkstra: %d", distancia[d_x][d_y]);
+}
+
+Saida A_estrela(Grafo g,int x,int y , int d_x,int d_y,Matriz M, Matriz A){
+
+  /*
+    // A* (star) Pathfinding
+    // Initialize both open and closed list
+    let the openList equal empty list of nodes
+    let the closedList equal empty list of nodes
+    // Add the start node
+    put the startNode on the openList (leave it's f at zero)
+    // Loop until you find the end
+    while the openList is not empty
+      // Get the current node
+      let the currentNode equal the node with the least f value
+      remove the currentNode from the openList
+      add the currentNode to the closedList
+      // Found the goal
+      if currentNode is the goal
+          Congratz! You've found the end! Backtrack to get path
+      // Generate children
+      let the children of the currentNode equal the adjacent nodes
+
+      for each child in the children
+          // Child is on the closedList
+          if child is in the closedList
+              continue to beginning of for loop
+          // Create the f, g, and h values
+          child.g = currentNode.g + distance between child and current
+          child.h = distance from child to end
+          child.f = child.g + child.h
+          // Child is already in openList
+          if child.position is in the openList's nodes positions
+              if the child.g is higher than the openList node's g
+                  continue to beginning of for loop
+          // Add the child to the openList
+          add the child to the openList
+  */
+  Saida retorno = make_Saida(0,0,0); // retorno first é numero de nos , segundo eh custo
+
+  g.Nos[x][y].id_anterior = g.Nos[x][y].id;
+  M.Tab[x][y] = M.Tab[x][y]*10 -1;
+  g.Nos[x][y].valor_bfs = 0;
+  std::list<No> open_list;
+  std::list<No> close_list;
+  g.Nos[x][y].f = 0;
+  open_list.push_back(g.Nos[x][y]);
+  while(!open_list.empty()){
+    float f_aux = open_list.begin()->f;
+    auto it_selecionado = open_list.begin();
+    for(auto it = open_list.begin();it != open_list.end() ; it++){
+      if(f_aux > it->f){
+        f_aux = it->f;
+        it_selecionado = it;
+      }
+    }
+    open_list.erase(it_selecionado);
+    close_list.push_back(it_selecionado.operator*());
+
+    if(it_selecionado->id == g.Nos[d_x][d_y].id){
+      //fazer backtracking
+      //std:: cout << it_selecionado->id << "\n";
+      //std:: cout << it_selecionado->id_anterior << "\n";
+      //std:: cout << "backtrack\n";
+      //retorno.second = it_selecionado->f;
+      auto caminho = it_selecionado;
+      retorno.Custo += caminho->valor_bfs;
+      //std:: cout << caminho->id << "\n";
+      //retorno.first++;
+      while(caminho->id != caminho->id_anterior){
+        //sleep(1);
+        for(auto it = close_list.begin();it != close_list.end() ; it++){
+          if(caminho->id_anterior == it->id){
+            //std:: cout << "caminho " << caminho->id << "\n";
+            M.Tab[caminho->i][caminho->j]--;
+            caminho = it;
+            retorno.NosCam++;
+            retorno.Custo += caminho->valor_bfs;
+          //  std:: cout << "TOTAL " << retorno.second << "
+          // ATUAL  " << caminho->valor_bfs  << "\n";
+          }
+        }
+      }
+      retorno.NosCam++;
+      M.Tab[x][y]--;
+      A.Tab[x][y] = M.Tab[x][y];
+      Print_Matriz(M);
+      break;
+    }
+
+    for(int i = 0 ; i < it_selecionado->A ; i++){
+      std::pair<int, int> pair_aux = it_selecionado->Arestas[i].destino;
+
+      if(std::find(close_list.begin(),close_list.end(),g.Nos[pair_aux.first][pair_aux.second]) != close_list.end()){
+        continue;
+      }
+      No filho = g.Nos[pair_aux.first][pair_aux.second];
+
+      if(std::find(open_list.begin(),open_list.end(),filho) != open_list.end()){
+        if(filho.g < it_selecionado->f + it_selecionado->Arestas[i].valor ){
+          continue;
+        }
+      }
+      //std:: cout << it_selecionado->id << " -> " << filho.id << "\n";
+      filho.valor_bfs = it_selecionado->Arestas[i].valor;
+      filho.id_anterior = it_selecionado->id;
+      filho.g = it_selecionado->f + it_selecionado->Arestas[i].valor;
+      filho.h = sqrt(pow(d_x - pair_aux.first,2 ) + pow(d_y -pair_aux.second ,2));
+      filho.f = filho.g + filho.h;
+      open_list.push_front(filho);
+
+      if(M.Tab[filho.i][filho.j] == 99 || M.Tab[filho.i][filho.j] == 9 ||
+      M.Tab[filho.i][filho.j] == 49 || M.Tab[filho.i][filho.j] == 149 ){
+        //nada
+      }else{
+        M.Tab[filho.i][filho.j] = M.Tab[filho.i][filho.j]*10 -1;
+      }
+      retorno.NosExp++;
+      Print_Matriz(M);
+      //sleep(1);
+    }
+
+  }
+  return retorno;
 }
 
 
+Saida A_estrela2(Grafo g,int x,int y , int d_x,int d_y,Matriz M, Matriz A){
+
+
+  Saida retorno = make_Saida(0,0,0); // retorno first é numero de nos , segundo eh custo
+
+  g.Nos[x][y].id_anterior = g.Nos[x][y].id;
+  M.Tab[x][y] = M.Tab[x][y]*10 -1;
+  g.Nos[x][y].valor_bfs = 0;
+  std::list<No> open_list;
+  std::list<No> close_list;
+  g.Nos[x][y].f = 0;
+  open_list.push_back(g.Nos[x][y]);
+  while(!open_list.empty()){
+    float f_aux = open_list.begin()->f;
+    auto it_selecionado = open_list.begin();
+    for(auto it = open_list.begin();it != open_list.end() ; it++){
+      if(f_aux > it->f){
+        f_aux = it->f;
+        it_selecionado = it;
+      }
+    }
+    open_list.erase(it_selecionado);
+    close_list.push_back(it_selecionado.operator*());
+
+    if(it_selecionado->id == g.Nos[d_x][d_y].id){
+      //fazer backtracking
+      //std:: cout << it_selecionado->id << "\n";
+      //std:: cout << it_selecionado->id_anterior << "\n";
+      //std:: cout << "backtrack\n";
+      //retorno.second = it_selecionado->f;
+      auto caminho = it_selecionado;
+      retorno.Custo += caminho->valor_bfs;
+      //std:: cout << caminho->id << "\n";
+      //retorno.first++;
+      while(caminho->id != caminho->id_anterior){
+        //sleep(1);
+        for(auto it = close_list.begin();it != close_list.end() ; it++){
+          if(caminho->id_anterior == it->id){
+            //std:: cout << "caminho " << caminho->id << "\n";
+            M.Tab[caminho->i][caminho->j]--;
+            A.Tab[caminho->i][caminho->j] = M.Tab[caminho->i][caminho->j];
+            caminho = it;
+            retorno.NosCam++;
+            retorno.Custo += caminho->valor_bfs;
+          //  std:: cout << "TOTAL " << retorno.second << "
+          // ATUAL  " << caminho->valor_bfs  << "\n";
+          }
+        }
+      }
+      retorno.NosCam++;
+      M.Tab[x][y]--;
+      A.Tab[x][y] = M.Tab[x][y];
+      Print_Matriz(M);
+      break;
+    }
+
+    for(int i = 0 ; i < it_selecionado->A ; i++){
+      std::pair<int, int> pair_aux = it_selecionado->Arestas[i].destino;
+
+      if(std::find(close_list.begin(),close_list.end(),g.Nos[pair_aux.first][pair_aux.second]) != close_list.end()){
+        continue;
+      }
+
+      g.Nos[pair_aux.first][pair_aux.second].valor_bfs = it_selecionado->Arestas[i].valor;
+      g.Nos[pair_aux.first][pair_aux.second].id_anterior = it_selecionado->id;
+      g.Nos[pair_aux.first][pair_aux.second].g = it_selecionado->f + it_selecionado->Arestas[i].valor;
+      g.Nos[pair_aux.first][pair_aux.second].h = sqrt(pow(d_x - pair_aux.first,2 ) + pow(d_y -pair_aux.second ,2));
+      g.Nos[pair_aux.first][pair_aux.second].f = g.Nos[pair_aux.first][pair_aux.second].g + g.Nos[pair_aux.first][pair_aux.second].h;
+
+      No filho = g.Nos[pair_aux.first][pair_aux.second];
+
+      auto filhoIN_openList = std::find(open_list.begin(),open_list.end(),filho);
+      if( filhoIN_openList != open_list.end()){
+        if(filho.g > filhoIN_openList->g ){
+          continue;
+        }
+      }
+      open_list.push_front(filho);
+      //std:: cout << it_selecionado->id << " -> " << filho.id << "\n";
+
+
+      if(M.Tab[filho.i][filho.j] == 99 || M.Tab[filho.i][filho.j] == 9 ||
+      M.Tab[filho.i][filho.j] == 49 || M.Tab[filho.i][filho.j] == 149 ){
+        //nada
+      }else{
+        M.Tab[filho.i][filho.j] = M.Tab[filho.i][filho.j]*10 -1;
+        retorno.NosExp++;
+      }
+
+      Print_Matriz(M);
+      //sleep(1);
+    }
+
+  }
+  return retorno;
+}
+
 
 int main(int argc, char **argv){
-  /*  
+  /*
     N  = arquivo com a Matriz
     Ox = x de Origem
     Oy = y de Origem
     Dx = x de Destino
     Dy = y de Destino
+    M  = método(1- BFS, 2-Dijkstra, 3-A*)
   */
+  ofstream myfile;
+
   std::string arquivo = argv[1];
   std::pair <int,int> O, D;
-  O = make_pair(atoi(argv[2]), atoi(argv[3]));
-  D = make_pair(atoi(argv[4]), atoi(argv[5]));
+  O = std::make_pair(atoi(argv[2]), atoi(argv[3]));
+  D = std::make_pair(atoi(argv[4]), atoi(argv[5]));
   std::list <std::pair <int,int> > c;
 
   Matriz Ambiente = Criar_ambiente(arquivo);
-  //Print_Matriz(Ambiente);
-  
+
   if(O.first < 0 || O.first >= Ambiente.N || O.second < 0 || O.second >= Ambiente.N){
     printf("\nCoordenadas de entrada inválidas!\n");
     return 0;
@@ -416,12 +826,68 @@ int main(int argc, char **argv){
 
   Grafo G = Matriz_to_Grafo(Ambiente);
   //Print_Grafo(G);
+
+
+ // Ambiente.Tab[O.first][O.second] = 255;
+  //Ambiente.Tab[D.first][D.second] = 0;
+
+  //BFS.Tab[O.first][O.second] = 255;
+  //BFS.Tab[D.first][D.second] = 0;
+
+  //Dijk.Tab[O.first][O.second] = 255;
+  //Dijk.Tab[D.first][D.second] = 0;
+
+  //Aestrela.Tab[O.first][O.second] = 255;
+ // Aestrela.Tab[D.first][D.second] = 0;
+
+
+  //ImprimirMatrizVisual(Ambiente,"Ambiente.ppm");
+
+  //ImprimirMatrizVisual(BFS,"BFS.ppm");
+
   Robo Bender = make_Robo(O.first, O.second, c);
-  //teste disjktra
-  printf("\n\n distancia  = %d" , Dijkstra(G,O.first,O.second,D.first,D.second));
+
+  Saida aux = make_Saida(0,0,0);
+  char nomearquivo[100];
+  sprintf(nomearquivo, "saida%d_(%d,%d)->(%d,%d).txt",atoi(argv[6]),O.first,O.second,D.first,D.second);
+
+  myfile.open (nomearquivo);
+  myfile << "Origem: (" << O.first << "," << O.second << ")\nDestino: ("<< D.first << "," << D.second << ")\n";
+
+  //if(atoi(argv[6]) == 1){
+    Matriz BFS = Criar_ambiente(arquivo);
+    myfile << "BFS\n";
+    aux = bfs(G,O.first,O.second,D.first,D.second,BFS,Ambiente);
+    myfile << "Nos Expandidos : " << aux.NosExp <<" Nos no Caminho : " << aux.NosCam << " Custo : " << aux.Custo << "\n";
+
+    ImprimirMatrizVisual(BFS,"BFS.ppm");
+    ImprimirMatrizVisual(Ambiente,"BFS_caminho.ppm");
+    Ambiente = Criar_ambiente(arquivo);
+    destroy_Matriz(BFS);
+  //}else if(atoi(argv[6]) ==  2){
+    Matriz Dijk = Criar_ambiente(arquivo);
+    myfile << "Disjktra\n";
+    aux = Dijkstra(G,O.first,O.second,D.first,D.second,Dijk,Ambiente);
+    myfile << "Nos Expandidos : " << aux.NosExp <<" Nos no Caminho : " << aux.NosCam << " Custo : " << aux.Custo << "\n";
+    ImprimirMatrizVisual(Dijk,"Dijk.ppm");
+    ImprimirMatrizVisual(Ambiente,"Dijk_caminho.ppm");
+    Ambiente = Criar_ambiente(arquivo);
+    destroy_Matriz(Dijk);
+  //}else if(atoi(argv[6]) == 3){
+    Matriz Aestrela = Criar_ambiente(arquivo);
+    myfile << "A*\n";
+    aux = A_estrela2(G,O.first,O.second,D.first,D.second,Aestrela,Ambiente);
+    myfile << "Nos Expandidos : " << aux.NosExp <<" Nos no Caminho : " << aux.NosCam << " Custo : " << aux.Custo << "\n";
+    ImprimirMatrizVisual(Aestrela,"Aestrela.ppm");
+    ImprimirMatrizVisual(Ambiente,"Aestrela_caminho.ppm");
+    destroy_Matriz(Aestrela);
+  //}else{
+    //printf("Método inválido!!!\n(1- BFS, 2-Dijkstra, 3-A*)");
+ // }
+
+  myfile.close();
 
   destroy_Grafo(G);
   destroy_Matriz(Ambiente);
-
   return 0;
 }
